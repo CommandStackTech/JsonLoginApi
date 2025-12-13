@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>JsonLoginApi - Login Test</title>
+  <style>
+    body { font-family: Arial; padding: 20px; max-width: 520px; }
+    label { font-weight: 600; }
+    input { padding: 8px; margin: 6px 0 14px; width: 100%; box-sizing: border-box; }
+    button { padding: 10px 14px; cursor: pointer; }
+    pre { background: #f3f3f3; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .hint { color: #555; font-size: 12px; margin-top: -10px; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+  <h2>JsonLoginApi Login Test</h2>
+
+  <label>Server IP / Host (port 80)</label>
+  <input id="host" value="3.237.91.140" placeholder="e.g. 3.237.91.140 or localhost" />
+  <div class="hint">Tip: use <b>localhost</b> if testing inside the server (RDP). Use the server IP from your laptop.</div>
+
+  <div class="row">
+    <div>
+      <label>UserId</label>
+      <input id="userId" value="admin" />
+    </div>
+    <div>
+      <label>Password</label>
+      <input id="password" value="admin123" type="password" />
+    </div>
+  </div>
+
+  <label>API Base Path (optional)</label>
+  <input id="basePath" value="" placeholder="leave blank or e.g. JsonLoginApi" />
+  <div class="hint">If IIS app is under an alias, enter it here (example: <b>JsonLoginApi</b>).</div>
+
+  <button onclick="callLogin()">Call Login API</button>
+
+  <h3>Output</h3>
+  <pre id="out">Click the button…</pre>
+
+  <script>
+    function buildUrl() {
+      const host = document.getElementById("host").value.trim();
+      const basePath = document.getElementById("basePath").value.trim().replace(/^\/+|\/+$/g, ""); // remove leading/trailing /
+      const prefix = basePath ? `/${basePath}` : "";
+      return `http://${host}${prefix}/api/Auth/login`;
+    }
+
+    async function callLogin() {
+      const out = document.getElementById("out");
+      const url = buildUrl();
+
+      const payload = {
+        userId: document.getElementById("userId").value,
+        password: document.getElementById("password").value
+      };
+
+      out.textContent = `Calling: ${url}\n\n...`;
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = text; }
+
+        out.textContent =
+          `URL: ${url}\nHTTP: ${res.status}\n\n` +
+          (typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      } catch (e) {
+        out.textContent =
+          `URL: ${url}\n\nERROR: ${e.message}\n\n` +
+          `If you see CORS errors, ensure the API allows your origin (CORS) and that the URL is reachable.`;
+      }
+    }
+  </script>
+</body>
+</html>
