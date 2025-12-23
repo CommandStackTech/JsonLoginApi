@@ -1,0 +1,57 @@
+name: Deploy to EC2 (SSH)
+
+on:
+  push:
+    branches: ["master"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish
+        run: |
+          dotnet restore
+          dotnet publish -c Release -o publish
+
+      - name: Create artifact tarball
+        run: tar -czf app.tgz -C publish .
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Upload artifact
+        run: |
+          scp -i ~/.ssh/id_ed25519 app.tgz ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/app.tgz
+
+      - name: Deploy (atomic release + restart)
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -euo pipefail
+
+            APP_ROOT="/var/www/dotnetapp"
+            RELEASES="$APP_ROOT/releases"
+            TS="$(date +%Y%m%d%H%M%S)"
+            NEW_RELEASE="$RELEASES/$TS"
+
+            mkdir -p "$NEW_RELEASE"
+            tar -xzf /tmp/app.tgz -C "$NEW_RELEASE"
+            rm -f /tmp/app.tgz
+
+            ln -sfn "$NEW_RELEASE" "$APP_ROOT/current"
+
+            sudo systemctl restart dotnetapp
+            sudo systemctl status dotnetapp --no-pager -l
+          EOF
