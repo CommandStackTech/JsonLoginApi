@@ -2,7 +2,7 @@ name: Deploy (.NET -> EC2)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   workflow_dispatch:
 
 env:
@@ -11,8 +11,8 @@ env:
   CONFIGURATION: Release
   DOTNET_VERSION: "8.0.x"
 
-  # ✅ UPDATE THIS to your actual .csproj path (NOT the .sln)
-  PROJECT_PATH: src/JsonLoginApi/JsonLoginApi.csproj
+  # Repo root contains JsonLoginApi.csproj (per your screenshot)
+  PROJECT_PATH: JsonLoginApi.csproj
 
 jobs:
   build:
@@ -66,7 +66,6 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          # Write key EXACTLY as-is (preserve newlines) and strip CR if present
           cat > ~/.ssh/id_rsa <<'EOF'
           ${{ secrets.EC2_SSH_KEY }}
           EOF
