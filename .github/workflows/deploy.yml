@@ -62,13 +62,14 @@ jobs:
 
       - name: Setup SSH
         shell: bash
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          cat > ~/.ssh/id_rsa <<'EOF'
-          ${{ secrets.EC2_SSH_KEY }}
-          EOF
+          # write multiline key correctly
+          printf "%s" "$EC2_SSH_KEY" > ~/.ssh/id_rsa
           tr -d '\r' < ~/.ssh/id_rsa > ~/.ssh/id_rsa.clean && mv ~/.ssh/id_rsa.clean ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
