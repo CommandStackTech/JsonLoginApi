@@ -64,20 +64,20 @@ jobs:
       - name: Debug secrets present (safe)
         shell: bash
         env:
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
         run: |
           set -euo pipefail
           echo "EC2_HOST set?  $([ -n "${EC2_HOST:-}" ] && echo YES || echo NO)"
           echo "EC2_USER set?  $([ -n "${EC2_USER:-}" ] && echo YES || echo NO)"
-          echo "EC2_SSH_KEY set? $([ -n "${EC2_SSH_KEY:-}" ] && echo YES || echo NO)"
-          echo "EC2_SSH_KEY bytes: ${#EC2_SSH_KEY}"
+          echo "EC2_SSH_PRIVATE_KEY set? $([ -n "${EC2_SSH_PRIVATE_KEY:-}" ] && echo YES || echo NO)"
+          echo "EC2_SSH_PRIVATE_KEY bytes: ${#EC2_SSH_PRIVATE_KEY}"
 
       - name: Setup SSH (pinpoint)
         shell: bash
         env:
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           set -euo pipefail
@@ -86,12 +86,12 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          if [ -z "${EC2_SSH_KEY:-}" ]; then
-            echo "ERROR: EC2_SSH_KEY secret is empty or not available to this workflow."
+          if [ -z "${EC2_SSH_PRIVATE_KEY:-}" ]; then
+            echo "ERROR: EC2_SSH_PRIVATE_KEY secret is empty or not available to this workflow."
             exit 1
           fi
 
-          printf "%s" "$EC2_SSH_KEY" > ~/.ssh/id_rsa
+          printf "%s" "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           tr -d '\r' < ~/.ssh/id_rsa > ~/.ssh/id_rsa.clean && mv ~/.ssh/id_rsa.clean ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
