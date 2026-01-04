@@ -5,13 +5,14 @@ on:
     branches: [ "master" ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   APP_NAME: dotnetapp
   APP_ROOT: /var/www/dotnetapp
   CONFIGURATION: Release
   DOTNET_VERSION: "8.0.x"
-
-  # Repo root contains JsonLoginApi.csproj (per your screenshot)
   PROJECT_PATH: JsonLoginApi.csproj
 
 jobs:
@@ -60,21 +61,45 @@ jobs:
         with:
           name: app-tgz
 
-      - name: Setup SSH
+      - name: Debug secrets present (safe)
         shell: bash
         env:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
         run: |
+          set -euo pipefail
+          echo "EC2_HOST set?  $([ -n "${EC2_HOST:-}" ] && echo YES || echo NO)"
+          echo "EC2_USER set?  $([ -n "${EC2_USER:-}" ] && echo YES || echo NO)"
+          echo "EC2_SSH_KEY set? $([ -n "${EC2_SSH_KEY:-}" ] && echo YES || echo NO)"
+          echo "EC2_SSH_KEY bytes: ${#EC2_SSH_KEY}"
+
+      - name: Setup SSH (pinpoint)
+        shell: bash
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          set -euo pipefail
+          set -x
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          # write multiline key correctly
+          if [ -z "${EC2_SSH_KEY:-}" ]; then
+            echo "ERROR: EC2_SSH_KEY secret is empty or not available to this workflow."
+            exit 1
+          fi
+
           printf "%s" "$EC2_SSH_KEY" > ~/.ssh/id_rsa
           tr -d '\r' < ~/.ssh/id_rsa > ~/.ssh/id_rsa.clean && mv ~/.ssh/id_rsa.clean ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/id_rsa -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${{ secrets.EC2_USER }}@$EC2_HOST" "echo SSH_OK"
 
       - name: Upload app.tgz to EC2
         run: |
